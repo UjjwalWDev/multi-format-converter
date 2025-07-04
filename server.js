@@ -280,34 +280,7 @@ app.post("/split-pdf", upload.single("file"), async (req, res) => {
   }
 });
 
-app.post("/convert-word-to-pdf", upload.single("file"), (req, res) => {
-  if (!req.file) return res.status(400).send("No file uploaded.");
 
-  const ext = path.extname(req.file.originalname);
-  const inputFileWithExt = req.file.path + ext;
-
-  // Rename the file to add the extension
-  fs.renameSync(req.file.path, inputFileWithExt);
-
-  const outputFileName = path.parse(req.file.originalname).name + ".pdf";
-  const outputFile = path.join(convertedDir, outputFileName);
-
-  execFile("python", ["convert_word_to_pdf.py", inputFileWithExt, outputFile], (error, stdout, stderr) => {
-    if (error) {
-      console.error("Conversion error:", stderr || error);
-      return res.status(500).json({ error: "Conversion failed" });
-    }
-
-    if (stdout.trim() === "Success") {
-      res.json({
-        url: `/converted/${outputFileName}`,
-        name: outputFileName,
-      });
-    } else {
-      res.status(500).json({ error: "Conversion failed" });
-    }
-  });
-});
 
 //csv to xls
 app.post("/api/csv-to-xls", memoryUpload.array("csvFiles"), (req, res) => {
@@ -1624,63 +1597,7 @@ app.post("/api/json-to-excel", (req, res) => {
   }
 })
 
-app.post("/api/remove-bg", upload.single("image"), async (req, res) => {
-  try {
-    if (!req.file) {
-      return res.status(400).send("No image uploaded");
-    }
 
-    const formData = new FormData();
-    formData.append("image", req.file.buffer, {
-      filename: req.file.originalname,
-      contentType: req.file.mimetype,
-    });
-
-    const response = await fetch("http://localhost:5002/api/remove-bg", {
-      method: "POST",
-      body: formData,
-      headers: formData.getHeaders(), // ✅ Important!
-    });
-
-    if (!response.ok) {
-      throw new Error("Python server error");
-    }
-
-    const result = await response.buffer();
-    res.set("Content-Type", "image/png");
-    res.send(result);
-  } catch (err) {
-    console.error("Remove BG Error:", err);
-    res.status(500).send("Background removal failed");
-  }
-});
-
-
-
-// // Merge PDF endpoint
-// app.post("/api/merge-pdf", upload.array("pdfFiles"), async (req, res) => {
-//   try {
-//     const mergedPdf = await MergePDFDocument.create();
-
-//     for (const file of req.files) {
-//       const buffer = fs.readFileSync(file.path);
-//       const pdf = await MergePDFDocument.load(buffer);
-//       const copiedPages = await mergedPdf.copyPages(pdf, pdf.getPageIndices());
-//       copiedPages.forEach((page) => mergedPdf.addPage(page));
-//     }
-
-//     const mergedBuffer = await mergedPdf.save();
-//     res.setHeader("Content-Type", "application/pdf");
-//     res.setHeader("Content-Disposition", "attachment; filename=merged.pdf");
-//     res.send(Buffer.from(mergedBuffer));
-
-//     // Delete temporary files
-//     req.files.forEach((file) => fs.unlinkSync(file.path));
-//   } catch (error) {
-//     console.error("PDF merge failed:", error);
-//     res.status(500).json({ error: "PDF merge failed." });
-//   }
-// });
 
 app.listen(PORT, () => {
   console.log(`🚀 Express server running at http://localhost:${PORT}`);
