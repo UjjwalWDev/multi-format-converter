@@ -172,33 +172,35 @@ app.post("/convert", upload.single("file"), async (req, res) => {
 
 
 app.post("/convert-pdf-to-png", upload.single("file"), (req, res) => {
-  if (!req.file) return res.status(400).send("No file uploaded");
-
   const inputPath = req.file.path;
-  const outputPrefix = path.join("converted", `page`);
-  const command = `pdftoppm -png ${inputPath} ${outputPrefix}`;
+  const outputDir = path.join(__dirname, "converted");
+
+  // Ensure output dir exists
+  if (!fs.existsSync(outputDir)) {
+    fs.mkdirSync(outputDir, { recursive: true });
+  }
+
+  const outputPrefix = path.join(outputDir, "page");
+
+  const command = `pdftoppm -png "${inputPath}" "${outputPrefix}"`;
 
   exec(command, (error, stdout, stderr) => {
     if (error) {
-      console.error("Conversion error:", error);
-      return res.status(500).send("Conversion failed");
+      console.error("Conversion error:", stderr);
+      return res.status(500).json({ error: "Conversion failed" });
     }
 
-    // Send back generated PNG files
-    const dir = path.dirname(outputPrefix);
-    const files = fs.readdirSync(dir).filter(f => f.startsWith("page") && f.endsWith(".png"));
+    // Collect all generated PNGs
+    const images = fs.readdirSync(outputDir)
+      .filter(file => file.endsWith(".png"))
+      .map(file => ({
+        url: `/converted/${file}`,
+        name: file
+      }));
 
-    const urls = files.map(f => ({
-      url: `/converted/${f}`,
-      name: f
-    }));
-
-    fs.unlinkSync(inputPath); // Clean up uploaded PDF
-
-    res.json({ files: urls });
+    res.json({ images });
   });
 });
-
 
 // PDF to TXT
 app.post("/convert-pdf-to-txt", upload.single("file"), async (req, res) => {
