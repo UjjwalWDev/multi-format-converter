@@ -27,7 +27,7 @@ const { stringify } = require("csv-stringify/sync")
 const ffmpeg = require("fluent-ffmpeg")
 const { v4: uuidv4 } = require("uuid")
 const sharp = require("sharp")
-const libre = require('libreoffice-convert');
+// const libre = require('libreoffice-convert');
 const potrace = require("potrace");
 const mammoth = require("mammoth");
 const { Document, Packer, Paragraph, TextRun } = require("docx");
@@ -645,49 +645,6 @@ function ensureDir(dirPath) {
   if (!fs.existsSync(dirPath)) fs.mkdirSync(dirPath, { recursive: true });
 }
 
-// PDF → PPTX
-app.post("/api/pdf-to-ppt", upload.single("file"), (req, res) => {
-  const inputPath = req.file.path;
-  const outputDir = path.join(__dirname, "converted");
-  const outputFileName = path.parse(req.file.originalname).name;
-
-  ensureDir(outputDir);
-
-  exec(`soffice --headless --convert-to pptx "${inputPath}" --outdir "${outputDir}"`, (error) => {
-    if (error) {
-      console.error("Conversion error (PDF to PPT):", error);
-      return res.status(500).json({ error: "Conversion failed" });
-    }
-
-    const outputFile = `${outputFileName}.pptx`;
-    res.json({
-      url: `/converted/${outputFile}`,
-      name: outputFile,
-    });
-  });
-});
-
-// PPTX → PDF
-app.post("/api/ppt-to-pdf", upload.single("file"), (req, res) => {
-  const inputPath = req.file.path;
-  const outputDir = path.join(__dirname, "converted");
-  const outputFileName = path.parse(req.file.originalname).name;
-
-  ensureDir(outputDir);
-
-  exec(`soffice --headless --convert-to pdf "${inputPath}" --outdir "${outputDir}"`, (error) => {
-    if (error) {
-      console.error("Conversion error (PPT to PDF):", error);
-      return res.status(500).json({ error: "Conversion failed" });
-    }
-
-    const outputFile = `${outputFileName}.pdf`;
-    res.json({
-      url: `/converted/${outputFile}`,
-      name: outputFile,
-    });
-  });
-});
 
 const outputDir = path.join(__dirname, "converted");
 
@@ -843,52 +800,6 @@ app.post("/api/txt-to-pdf", upload.single("file"), (req, res) => {
   })
 })
 
-app.post("/convert-rtf-to-pdf", upload.single("file"), (req, res) => {
-  if (!req.file) {
-    return res.status(400).json({ error: "No file uploaded" })
-  }
-
-  const inputPath = req.file.path
-  const outputDir = path.resolve("converted")
-  if (!fs.existsSync(outputDir)) fs.mkdirSync(outputDir)
-
-  const command = `soffice --headless --convert-to pdf --outdir "${outputDir}" "${inputPath}"`
-
-  console.log("Running command:", command)
-
-  exec(command, (error, stdout, stderr) => {
-    console.log("STDOUT:", stdout)
-    console.log("STDERR:", stderr)
-
-    fs.unlink(inputPath, (unlinkErr) => {
-      if (unlinkErr) console.error("Failed to delete uploaded file:", unlinkErr)
-    })
-
-    if (error) {
-      console.error("Conversion error:", error)
-      return res.status(500).json({ error: "Conversion failed", details: error.message })
-    }
-
-    // Use multer filename (without extension) for output pdf filename
-    const pdfFilename = req.file.filename + ".pdf"
-    const pdfFilePath = path.join(outputDir, pdfFilename)
-
-    if (!fs.existsSync(pdfFilePath)) {
-      console.error("PDF file not found after conversion")
-      return res.status(500).json({ error: "PDF file not found after conversion" })
-    }
-
-    res.json({
-      results: [
-        {
-          url: `/converted/${pdfFilename}`,
-          name: pdfFilename,
-          type: "application/pdf",
-        },
-      ],
-    })
-  })
-})
 
 app.post('/convert-png-to-ico', upload.single('file'), async (req, res) => {
   try {
@@ -905,7 +816,7 @@ app.post('/convert-png-to-ico', upload.single('file'), async (req, res) => {
     res.json({
       results: [
         {
-          url: `http://localhost:${PORT}/${outputPath}`,
+          url: `${BASE_URL}/converted/${outputName}`,
           name: `${req.file.originalname.replace(/\.png$/, '')}.ico`,
           type: 'image/x-icon',
         },
@@ -953,7 +864,7 @@ app.post("/api/gif-to-mp4", upload.single("image"), (req, res) => {
     .on("end", () => {
       fs.unlinkSync(inputPath) // Cleanup uploaded GIF
       res.json({
-        url: `http://localhost:${PORT}/converted/${outputName}`,
+        url: `${BASE_URL}/converted/${outputName}`,
         name: outputName,
       })
     })
@@ -978,7 +889,7 @@ app.post("/api/mp4-to-gif", upload.single("video"), (req, res) => {
     .on("end", () => {
       fs.unlinkSync(inputPath)
       res.json({
-        url: `http://localhost:${PORT}/converted/${outputName}`,
+        url: `${BASE_URL}/converted/${outputName}`,
         name: outputName,
       })
     })
@@ -999,7 +910,7 @@ app.post("/api/mp3-to-wav", upload.single("audio"), (req, res) => {
     .on("end", () => {
       fs.unlinkSync(inputPath)
       res.json({
-        url: `http://localhost:${PORT}/converted/${outputName}`,
+        url: `${BASE_URL}/converted/${outputName}`,
         name: outputName,
       })
     })
@@ -1022,7 +933,7 @@ app.post("/api/wav-to-mp3", upload.single("audio"), (req, res) => {
     .on("end", () => {
       fs.unlinkSync(inputPath)
       res.json({
-        url: `http://localhost:${PORT}/converted/${outputName}`,
+        url: `${BASE_URL}/converted/${outputName}`,
         name: outputName,
       })
     })
@@ -1044,7 +955,7 @@ app.post("/api/flac-to-mp3", upload.single("audio"), (req, res) => {
     .on("end", () => {
       fs.unlinkSync(inputPath)
       res.json({
-        url: `http://localhost:${PORT}/converted/${outputName}`,
+        url: `${BASE_URL}/converted/${outputName}`,
         name: outputName,
       })
     })
@@ -1066,7 +977,7 @@ app.post("/api/mkv-to-mp4", upload.single("video"), (req, res) => {
     .on("end", () => {
       fs.unlinkSync(inputPath)
       res.json({
-        url: `http://localhost:${PORT}/converted/${outputName}`,
+        url: `${BASE_URL}/converted/${outputName}`,
         name: outputName,
       })
     })
@@ -1088,7 +999,7 @@ app.post("/api/mp4-to-mov", upload.single("video"), (req, res) => {
     .on("end", () => {
       fs.unlinkSync(inputPath)
       res.json({
-        url: `http://localhost:${PORT}/converted/${outputName}`,
+        url: `${BASE_URL}/converted/${outputName}`,
         name: outputName,
       })
     })
@@ -1109,7 +1020,7 @@ app.post("/api/mov-to-mp4", upload.single("video"), (req, res) => {
     .on("end", () => {
       fs.unlinkSync(inputPath)
       res.json({
-        url: `http://localhost:${PORT}/converted/${outputName}`,
+        url: `${BASE_URL}/converted/${outputName}`,
         name: outputName,
       })
     })
@@ -1150,7 +1061,7 @@ app.post("/api/epub-to-pdf", upload.single("epub"), (req, res) => {
       fs.unlinkSync(renamedInputPath); // Clean up the renamed EPUB file
 
       res.json({
-        url: `http://localhost:${PORT}/converted/${outputName}`,
+        url: `${BASE_URL}/converted/${outputName}`,
         name: outputName,
       });
     });
@@ -1187,7 +1098,7 @@ app.post("/api/mobi-to-pdf", upload.single("mobi"), (req, res) => {
       fs.unlinkSync(renamedInputPath); // Cleanup the renamed .mobi file
 
       res.json({
-        url: `http://localhost:${PORT}/converted/${outputName}`,
+        url: `${BASE_URL}/converted/${outputName}`,
         name: outputName,
       });
     });
@@ -1224,7 +1135,7 @@ app.post("/api/epub-to-mobi", upload.single("epub"), (req, res) => {
       fs.unlinkSync(renamedInputPath);
 
       res.json({
-        url: `http://localhost:${PORT}/converted/${outputName}`,
+        url: `${BASE_URL}/converted/${outputName}`,
         name: outputName,
       });
     });
@@ -1246,7 +1157,7 @@ app.post("/api/tiff-to-jpg", upload.single("image"), async (req, res) => {
     fs.unlinkSync(inputPath) // delete uploaded file
 
     res.json({
-      url: `http://localhost:${PORT}/converted/${outputName}`,
+      url: `${BASE_URL}/converted/${outputName}`,
       name: outputName,
     })
   } catch (error) {
@@ -1270,7 +1181,7 @@ app.post("/api/tiff-to-png", upload.single("image"), async (req, res) => {
     fs.unlinkSync(inputPath) // delete uploaded file
 
     res.json({
-      url: `http://localhost:${PORT}/converted/${outputName}`,
+      url: `${BASE_URL}/converted/${outputName}`,
       name: outputName,
     })
   } catch (error) {
