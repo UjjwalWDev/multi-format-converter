@@ -1,0 +1,26 @@
+# Ignore node_modules
+node_modules/
+
+# Ignore environment variables
+.env
+
+# Ignore system-specific files
+.DS_Store
+Thumbs.db
+
+# Ignore folders that should not go on GitHub
+uploads/
+temp/
+converted/
+outputs/
+
+# Python cache (if you're running .py scripts)
+__pycache__/
+*.pyc
+*.pyo
+
+# Logs (if any)
+*.log
+
+# Optional: Ignore VSCode settings
+.vscode/
