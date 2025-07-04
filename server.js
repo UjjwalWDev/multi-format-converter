@@ -7,12 +7,12 @@ const path = require("path");
 const PDFDocument = require("pdfkit");
 const Tesseract = require("tesseract.js");
 const pdfParse = require("pdf-parse");
-const pdf = require("pdf-poppler");
+// const pdf = require("pdf-poppler");
 const { PDFDocument: LibPDFDocument } = require("pdf-lib");
 const { PDFDocument: CustomPDFDocument ,rgb} = require("pdf-lib");
 const { PDFDocument: OrganizePDFDocument } = require("pdf-lib");
 const heicConvert = require("heic-convert");
-const { extract } = require("unrar-promise");
+// const { extract } = require("unrar-promise");
 const archiver = require("archiver");
 const fetch = (...args) => import('node-fetch').then(({ default: fetch }) => fetch(...args));
 const FormData = require("form-data")
@@ -24,11 +24,11 @@ const { execFile } = require("child_process");
 const { exec } = require("child_process");
 const xlsx = require("xlsx");
 const { stringify } = require("csv-stringify/sync")
-const ffmpeg = require("fluent-ffmpeg")
+// const ffmpeg = require("fluent-ffmpeg")
 const { v4: uuidv4 } = require("uuid")
 const sharp = require("sharp")
-const libre = require('libreoffice-convert');
-const potrace = require("potrace");
+// const libre = require('libreoffice-convert');
+// const potrace = require("potrace");
 const mammoth = require("mammoth");
 const { Document, Packer, Paragraph, TextRun } = require("docx");
 const XLSX = require("xlsx");
@@ -719,35 +719,7 @@ app.post("/api/svg-to-png", upload.single("file"), async (req, res) => {
 
 const uploadDir = path.join(__dirname, "uploads");
 
-// PNG to SVG route
-app.post("/api/png-to-svg", upload.single("file"), async (req, res) => {
-  try {
-    const inputPath = req.file.path;
 
-    // Convert PNG to grayscale buffer
-    const buffer = await sharp(inputPath)
-      .flatten({ background: "#fff" }) // removes transparency
-      .grayscale()
-      .resize(512) // optional resize
-      .toBuffer();
-
-    // Use potrace.trace (✅ correct usage)
-    potrace.trace(buffer, { color: "black" }, (err, svg) => {
-      fs.unlinkSync(inputPath); // Cleanup temp file
-
-      if (err) {
-        console.error("Potrace error:", err);
-        return res.status(500).json({ error: "SVG conversion failed" });
-      }
-
-      // Respond with the SVG string
-      res.json({ svg });
-    });
-  } catch (err) {
-    console.error("Conversion error:", err);
-    res.status(500).json({ error: "Failed to convert PNG to SVG" });
-  }
-});
 // Endpoint for Word to Text
 app.post("/api/word-to-text", upload.single("wordFile"), async (req, res) => {
   const filePath = req.file.path;
@@ -1119,116 +1091,116 @@ app.post("/api/mov-to-mp4", upload.single("video"), (req, res) => {
     .save(outputPath)
 })
 
-app.post("/api/epub-to-pdf", upload.single("epub"), (req, res) => {
-  if (!req.file) {
-    return res.status(400).json({ error: "No file uploaded" });
-  }
+// app.post("/api/epub-to-pdf", upload.single("epub"), (req, res) => {
+//   if (!req.file) {
+//     return res.status(400).json({ error: "No file uploaded" });
+//   }
 
-  const originalExtension = path.extname(req.file.originalname); // e.g., .epub
-  const tempPath = req.file.path; // original multer path (without extension)
-  const renamedInputPath = `${tempPath}${originalExtension}`; // append correct extension
+//   const originalExtension = path.extname(req.file.originalname); // e.g., .epub
+//   const tempPath = req.file.path; // original multer path (without extension)
+//   const renamedInputPath = `${tempPath}${originalExtension}`; // append correct extension
 
-  // Rename temp file to have the correct extension
-  fs.rename(tempPath, renamedInputPath, (renameErr) => {
-    if (renameErr) {
-      console.error("File rename error:", renameErr);
-      return res.status(500).json({ error: "Internal server error" });
-    }
+//   // Rename temp file to have the correct extension
+//   fs.rename(tempPath, renamedInputPath, (renameErr) => {
+//     if (renameErr) {
+//       console.error("File rename error:", renameErr);
+//       return res.status(500).json({ error: "Internal server error" });
+//     }
 
-    const outputName = `${uuidv4()}.pdf`;
-    const outputPath = path.join("converted", outputName);
+//     const outputName = `${uuidv4()}.pdf`;
+//     const outputPath = path.join("converted", outputName);
 
-    const command = `ebook-convert "${renamedInputPath}" "${outputPath}"`;
+//     const command = `ebook-convert "${renamedInputPath}" "${outputPath}"`;
 
-    exec(command, (err, stdout, stderr) => {
-      if (err) {
-        console.error("Conversion error:", stderr);
-        return res.status(500).json({ error: "Conversion failed" });
-      }
+//     exec(command, (err, stdout, stderr) => {
+//       if (err) {
+//         console.error("Conversion error:", stderr);
+//         return res.status(500).json({ error: "Conversion failed" });
+//       }
 
-      fs.unlinkSync(renamedInputPath); // Clean up the renamed EPUB file
+//       fs.unlinkSync(renamedInputPath); // Clean up the renamed EPUB file
 
-      res.json({
-        url: `${BASE_URL}/converted/${outputName}`,
-        name: outputName,
-      });
-    });
-  });
-});
-
-
-app.post("/api/mobi-to-pdf", upload.single("mobi"), (req, res) => {
-  if (!req.file) {
-    return res.status(400).json({ error: "No file uploaded" });
-  }
-
-  const originalExtension = path.extname(req.file.originalname); // should be .mobi
-  const tempPath = req.file.path;
-  const renamedInputPath = `${tempPath}${originalExtension}`;
-
-  fs.rename(tempPath, renamedInputPath, (renameErr) => {
-    if (renameErr) {
-      console.error("File rename error:", renameErr);
-      return res.status(500).json({ error: "Internal server error" });
-    }
-
-    const outputName = `${uuidv4()}.pdf`;
-    const outputPath = path.join("converted", outputName);
-
-    const command = `ebook-convert "${renamedInputPath}" "${outputPath}"`;
-
-    exec(command, (err, stdout, stderr) => {
-      if (err) {
-        console.error("Conversion error:", stderr);
-        return res.status(500).json({ error: "Conversion failed" });
-      }
-
-      fs.unlinkSync(renamedInputPath); // Cleanup the renamed .mobi file
-
-      res.json({
-        url: `${BASE_URL}/converted/${outputName}`,
-        name: outputName,
-      });
-    });
-  });
-});
+//       res.json({
+//         url: `${BASE_URL}/converted/${outputName}`,
+//         name: outputName,
+//       });
+//     });
+//   });
+// });
 
 
-app.post("/api/epub-to-mobi", upload.single("epub"), (req, res) => {
-  if (!req.file) {
-    return res.status(400).json({ error: "No file uploaded" });
-  }
+// app.post("/api/mobi-to-pdf", upload.single("mobi"), (req, res) => {
+//   if (!req.file) {
+//     return res.status(400).json({ error: "No file uploaded" });
+//   }
 
-  const originalExtension = path.extname(req.file.originalname); // e.g., .epub or .eupb
-  const tempPath = req.file.path;
-  const renamedInputPath = `${tempPath}${originalExtension}`;
+//   const originalExtension = path.extname(req.file.originalname); // should be .mobi
+//   const tempPath = req.file.path;
+//   const renamedInputPath = `${tempPath}${originalExtension}`;
 
-  fs.rename(tempPath, renamedInputPath, (renameErr) => {
-    if (renameErr) {
-      console.error("File rename error:", renameErr);
-      return res.status(500).json({ error: "Internal server error" });
-    }
+//   fs.rename(tempPath, renamedInputPath, (renameErr) => {
+//     if (renameErr) {
+//       console.error("File rename error:", renameErr);
+//       return res.status(500).json({ error: "Internal server error" });
+//     }
 
-    const outputName = `${uuidv4()}.mobi`;
-    const outputPath = path.join("converted", outputName);
+//     const outputName = `${uuidv4()}.pdf`;
+//     const outputPath = path.join("converted", outputName);
 
-    const command = `ebook-convert "${renamedInputPath}" "${outputPath}"`;
+//     const command = `ebook-convert "${renamedInputPath}" "${outputPath}"`;
 
-    exec(command, (err, stdout, stderr) => {
-      if (err) {
-        console.error("Conversion error:", stderr);
-        return res.status(500).json({ error: "Conversion failed" });
-      }
+//     exec(command, (err, stdout, stderr) => {
+//       if (err) {
+//         console.error("Conversion error:", stderr);
+//         return res.status(500).json({ error: "Conversion failed" });
+//       }
 
-      fs.unlinkSync(renamedInputPath);
+//       fs.unlinkSync(renamedInputPath); // Cleanup the renamed .mobi file
 
-      res.json({
-        url: `${BASE_URL}/converted/${outputName}`,
-        name: outputName,
-      });
-    });
-  });
-});
+//       res.json({
+//         url: `${BASE_URL}/converted/${outputName}`,
+//         name: outputName,
+//       });
+//     });
+//   });
+// });
+
+
+// app.post("/api/epub-to-mobi", upload.single("epub"), (req, res) => {
+//   if (!req.file) {
+//     return res.status(400).json({ error: "No file uploaded" });
+//   }
+
+//   const originalExtension = path.extname(req.file.originalname); // e.g., .epub or .eupb
+//   const tempPath = req.file.path;
+//   const renamedInputPath = `${tempPath}${originalExtension}`;
+
+//   fs.rename(tempPath, renamedInputPath, (renameErr) => {
+//     if (renameErr) {
+//       console.error("File rename error:", renameErr);
+//       return res.status(500).json({ error: "Internal server error" });
+//     }
+
+//     const outputName = `${uuidv4()}.mobi`;
+//     const outputPath = path.join("converted", outputName);
+
+//     const command = `ebook-convert "${renamedInputPath}" "${outputPath}"`;
+
+//     exec(command, (err, stdout, stderr) => {
+//       if (err) {
+//         console.error("Conversion error:", stderr);
+//         return res.status(500).json({ error: "Conversion failed" });
+//       }
+
+//       fs.unlinkSync(renamedInputPath);
+
+//       res.json({
+//         url: `${BASE_URL}/converted/${outputName}`,
+//         name: outputName,
+//       });
+//     });
+//   });
+// });
 
 app.post("/api/tiff-to-jpg", upload.single("image"), async (req, res) => {
   if (!req.file) return res.status(400).json({ error: "No file uploaded" })
